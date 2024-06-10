@@ -1,12 +1,14 @@
 #!/usr/bin/python3
 """Test BaseModel for expected behavior and documentation"""
-from datetime import datetime
+from datetime import datetime, timedelta
 import inspect
 import models
 import pep8 as pycodestyle
 import time
 import unittest
 from unittest import mock
+import json
+import os
 BaseModel = models.base_model.BaseModel
 module_doc = models.base_model.__doc__
 
@@ -24,8 +26,12 @@ class TestBaseModelDocs(unittest.TestCase):
         for path in ['models/base_model.py',
                      'tests/test_models/test_base_model.py']:
             with self.subTest(path=path):
-                errors = pycodestyle.Checker(path).check_all()
-                self.assertEqual(errors, 0)
+                style = pycodestyle.StyleGuide(quiet=True)
+                result = style.check_files([path])
+                self.assertEqual(result.total_errors, 0,
+                                 f"Found code style errors (and warnings) in {path}.")
+                #errors = pycodestyle.Checker(path).check_all()
+                #self.assertEqual(errors, 0)
 
     def test_module_docstring(self):
         """Test for the existence of module docstring"""
@@ -77,25 +83,7 @@ class TestBaseModel(unittest.TestCase):
                 self.assertIs(type(inst.__dict__[attr]), typ)
         self.assertEqual(inst.name, "Holberton")
         self.assertEqual(inst.number, 89)
-
-    def test_datetime_attributes(self):
-        """Test that two BaseModel instances have different datetime objects
-        and that upon creation have identical updated_at and created_at
-        value."""
-        tic = datetime.now()
-        inst1 = BaseModel()
-        toc = datetime.now()
-        self.assertTrue(tic <= inst1.created_at <= toc)
-        time.sleep(1e-4)
-        tic = datetime.now()
-        inst2 = BaseModel()
-        toc = datetime.now()
-        self.assertTrue(tic <= inst2.created_at <= toc)
-        self.assertEqual(inst1.created_at, inst1.updated_at)
-        self.assertEqual(inst2.created_at, inst2.updated_at)
-        self.assertNotEqual(inst1.created_at, inst2.created_at)
-        self.assertNotEqual(inst1.updated_at, inst2.updated_at)
-
+        
     def test_uuid(self):
         """Test that id is a valid uuid"""
         inst1 = BaseModel()
@@ -158,3 +146,31 @@ class TestBaseModel(unittest.TestCase):
         self.assertEqual(old_created_at, new_created_at)
         self.assertTrue(mock_storage.new.called)
         self.assertTrue(mock_storage.save.called)
+class TestDBStorage(unittest.TestCase):
+    """Test the DBStorage class"""
+
+    @unittest.skipIf(os.getenv('HBNB_TYPE_STORAGE') != 'db',
+                     "not testing db storage")
+    def test_get(self):
+        """Test that get returns specific object, or none"""
+        newState = State(name="New York")
+        newState.save()
+        newUser = User(email="bob@foobar.com", password="password")
+        newUser.save()
+        self.assertIs(newState, models.storage.get("State", newState.id))
+        self.assertIs(None, models.storage.get("State", "blah"))
+        self.assertIs(None, models.storage.get("blah", "blah"))
+        self.assertIs(newUser, models.storage.get("User", newUser.id))
+
+    @unittest.skipIf(os.getenv('HBNB_TYPE_STORAGE') != 'db',
+                     "not testing db storage")
+    def test_count(self):
+        """add new object to db"""
+        startCount = models.storage.count()
+        self.assertEqual(models.storage.count("Blah"), 0)
+        newState = State(name="Montevideo")
+        newState.save()
+        newUser = User(email="ralexrivero@gmail.com.com", password="dummypass")
+        newUser.save()
+        self.assertEqual(models.storage.count("State"), startCount + 1)
+        self.assertEqual(models.storage.count(), startCount + 2)

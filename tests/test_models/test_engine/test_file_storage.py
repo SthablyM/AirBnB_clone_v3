@@ -3,6 +3,7 @@
 Contains the TestFileStorageDocs classes
 """
 
+import unittest
 from datetime import datetime
 import inspect
 import models
@@ -12,6 +13,7 @@ from models.base_model import BaseModel
 from models.city import City
 from models.place import Place
 from models.review import Review
+from models import storage
 from models.state import State
 from models.user import User
 import json
@@ -113,3 +115,20 @@ class TestFileStorage(unittest.TestCase):
         with open("file.json", "r") as f:
             js = f.read()
         self.assertEqual(json.loads(string), json.loads(js))
+
+    def test_get(self):
+        """Test the get method."""
+        user = User(email="test@test.com", password="123")
+        storage.new(user)
+        storage.save()
+        self.assertEqual(storage.get(User, user.id), user)
+        self.assertIsNone(storage.get(User, "nonexistent_id"))
+
+    def test_count(self):
+        """Test the count method."""
+        initial_count = storage.count()
+        user = User(email="test@test.com", password="123")
+        storage.new(user)
+        storage.save()
+        self.assertEqual(storage.count(), initial_count + 1)
+        self.assertEqual(storage.count(User), 1)

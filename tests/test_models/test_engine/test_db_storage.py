@@ -2,7 +2,7 @@
 """
 Contains the TestDBStorageDocs and TestDBStorage classes
 """
-
+import unittest
 from datetime import datetime
 import inspect
 import models
@@ -13,10 +13,12 @@ from models.city import City
 from models.place import Place
 from models.review import Review
 from models.state import State
+from models import storage
 from models.user import User
 import json
 import os
 import pep8
+import pycodestyle
 import unittest
 DBStorage = db_storage.DBStorage
 classes = {"Amenity": Amenity, "City": City, "Place": Place,
@@ -66,7 +68,22 @@ test_db_storage.py'])
                              "{:s} method needs a docstring".format(func[0]))
             self.assertTrue(len(func[1].__doc__) >= 1,
                             "{:s} method needs a docstring".format(func[0]))
+    def test_get(self):
+        """Test the get method."""
+        user = User(email="test@test.com", password="123")
+        storage.new(user)
+        storage.save()
+        self.assertEqual(storage.get(User, user.id), user)
+        self.assertIsNone(storage.get(User, "nonexistent_id"))
 
+    def test_count(self):
+        """Test the count method."""
+        initial_count = storage.count()
+        user = User(email="test@test.com", password="123")
+        storage.new(user)
+        storage.save()
+        self.assertEqual(storage.count(), initial_count + 1)
+        self.assertEqual(storage.count(User), 1)
 
 class TestFileStorage(unittest.TestCase):
     """Test the FileStorage class"""
